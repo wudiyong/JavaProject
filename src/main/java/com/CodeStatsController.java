@@ -3,6 +3,7 @@ package com;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,50 +51,13 @@ public class CodeStatsController {
         );
     }
 
-    @GetMapping("/")
-    public String index() {
-        return "<!DOCTYPE html>" +
-            "<html>" +
-            "<head>" +
-            "<meta charset='UTF-8'>" +
-            "<title>Push Records</title>" +
-            "<style>" +
-            "body { font-family: Arial, sans-serif; margin: 20px; }" +
-            "table { border-collapse: collapse; width: 100%; }" +
-            "th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }" +
-            "th { background-color: #4CAF50; color: white; }" +
-            "tr:nth-child(even) { background-color: #f2f2f2; }" +
-            ".diff-content { max-height: 200px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; font-size: 12px; }" +
-            "</style>" +
-            "</head>" +
-            "<body>" +
-            "<h1>Git Push Records</h1>" +
-            "<div id='records'></div>" +
-            "<script>" +
-            "fetch('/api/records').then(r => r.json()).then(data => {" +
-            "  let html = '<table><tr><th>ID</th><th>Local Ref</th><th>Local SHA</th><th>Remote Ref</th><th>Remote SHA</th><th>Push Time</th><th>Changed Files</th><th>Diff</th></tr>';" +
-            "  data.forEach(row => {" +
-            "    html += '<tr>';" +
-            "    html += '<td>' + row[0] + '</td>';" +
-            "    html += '<td>' + row[1] + '</td>';" +
-            "    html += '<td>' + (row[2] ? row[2].substring(0, 7) : '') + '</td>';" +
-            "    html += '<td>' + row[3] + '</td>';" +
-            "    html += '<td>' + (row[4] ? row[4].substring(0, 7) : '') + '</td>';" +
-            "    html += '<td>' + row[5] + '</td>';" +
-            "    html += '<td>' + row[6] + '</td>';" +
-            "    html += '<td><div class=\"diff-content\">' + (row[7] || '') + '</div></td>';" +
-            "    html += '</tr>';" +
-            "  });" +
-            "  html += '</table>';" +
-            "  document.getElementById('records').innerHTML = html;" +
-            "});" +
-            "</script>" +
-            "</body>" +
-            "</html>";
-    }
-
     @GetMapping("/api/records")
     public List<Map<String, Object>> getRecords() {
         return jdbcTemplate.queryForList("SELECT * FROM push_records ORDER BY id DESC");
+    }
+
+    @GetMapping("/api/records/{id}")
+    public Map<String, Object> getRecord(@PathVariable Long id) {
+        return jdbcTemplate.queryForMap("SELECT * FROM push_records WHERE id = ?", id);
     }
 }
