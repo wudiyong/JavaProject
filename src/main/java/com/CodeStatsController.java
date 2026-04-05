@@ -23,7 +23,17 @@ public class CodeStatsController {
         String changedFiles = "";
         if (changedFilesObj != null) {
             if (changedFilesObj instanceof List) {
-                changedFiles = String.join(",", (List<String>) changedFilesObj);
+                List<?> list = (List<?>) changedFilesObj;
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < list.size(); i++) {
+                    if (i > 0) {
+                        sb.append(',');
+                    }
+                    sb.append(list.get(i));
+                }
+                changedFiles = sb.toString();
+            } else if (changedFilesObj instanceof String) {
+                changedFiles = (String) changedFilesObj;
             } else {
                 changedFiles = String.valueOf(changedFilesObj);
             }
