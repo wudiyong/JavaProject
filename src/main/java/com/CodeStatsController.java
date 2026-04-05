@@ -12,5 +12,6 @@ public class CodeStatsController {
     public void codeStats(@RequestBody Map<String, Object> params) {
         System.out.println(params);
         System.out.println("codeStats");
+        System.out.println("success");
     }
 }
