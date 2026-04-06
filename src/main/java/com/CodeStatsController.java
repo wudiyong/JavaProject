@@ -12,14 +12,13 @@ import java.util.Map;
 
 @RestController
 public class CodeStatsController {
-    //test push
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @PostMapping("/codeStats")
     public void codeStats(@RequestBody Map<String, Object> params) {
-        String sql = "INSERT INTO push_records (local_ref, local_sha, remote_ref, remote_sha, push_time, changed_files, diff) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO push_records (local_ref, local_sha, remote_ref, remote_sha, push_time, changed_files, old_snapshot, new_snapshot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         
         Object changedFilesObj = params.get("changed_files");
         String changedFiles = "";
@@ -48,7 +47,8 @@ public class CodeStatsController {
             params.get("remote_sha"),
             params.get("push_time"),
             changedFiles,
-            params.get("diff")
+            params.get("old_snapshot"),
+            params.get("new_snapshot")
         );
     }
 
