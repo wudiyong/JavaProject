@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import com.entity.OpenCodeAgentRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -172,7 +174,7 @@ public class CodeStatsController {
             System.out.println("推送摘要: " + objectMapper.writeValueAsString(payload.get("pushSummary")));
             System.out.println("提交信息: " + objectMapper.writeValueAsString(payload.get("commitInfos")));
             System.out.println("OC 部分: " + objectMapper.writeValueAsString(payload.get("ocParts")));
-            System.out.println("=== 推送报告接收完成 ===");
+            System.out.println("=== 推送报告接收完成 测试修改2===");
         } catch (Exception e) {
             e.printStackTrace();
         }
