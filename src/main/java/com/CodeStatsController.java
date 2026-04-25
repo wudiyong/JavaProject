@@ -172,7 +172,8 @@ public class CodeStatsController {
             System.out.println("推送摘要: " + objectMapper.writeValueAsString(payload.get("pushSummary")));
             System.out.println("提交信息: " + objectMapper.writeValueAsString(payload.get("commitInfos")));
             System.out.println("OC 部分: " + objectMapper.writeValueAsString(payload.get("ocParts")));
-            System.out.println("=== 推送报告接收完成 ===");
+            System.out.println("=== 推送报告接收完成 测试修改===");
+            System.out.println("=== 推送报告接收完成 测试新增===");
         } catch (Exception e) {
             e.printStackTrace();
         }
