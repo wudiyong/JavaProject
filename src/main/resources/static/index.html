@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<title>Push Records</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: Arial, sans-serif; margin: 20px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+th { background-color: #4CAF50; color: white; }
+tr:nth-child(even) { background-color: #f2f2f2; }
+.btn-small { padding: 2px 8px; font-size: 11px; background: #28a745; color: white; border: none; cursor: pointer; border-radius: 3px; }
+.btn-small:hover { background: #218838; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+.modal-content { background: white; margin: 2% auto; padding: 20px; width: 95%; max-height: 90vh; overflow-y: auto; border-radius: 5px; }
+.close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+.files-cell { max-width: 400px; }
+.file-tag { display: inline-block; margin: 2px 4px 2px 0; }
+.diff-viewer { display: flex; width: 100%; height: 500px; border: 1px solid #ddd; margin-top: 10px; }
+.diff-pane { width: 50%; height: 100%; overflow: auto; }
+.diff-pane-left { border-right: 1px solid #ddd; }
+.diff-line { display: flex; font-family: monospace; font-size: 12px; line-height: 18px; }
+.diff-line-num { width: 40px; padding: 0 5px; text-align: right; color: #999; background: #f8f8f8; user-select: none; border-right: 1px solid #eee; flex-shrink: 0; }
+.diff-line-code { flex: 1; padding: 0 8px; white-space: pre; overflow-x: auto; }
+.diff-add { background: #e6ffed; }
+.diff-del { background: #ffebe9; }
+.diff-file-header { background: #f5f5f5; padding: 8px; font-weight: bold; margin: 10px 0 5px 0; }
+.pane-header { padding: 5px 10px; background: #e0e0e0; font-weight: bold; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>Git Push Records</h1>
+<div id='records'></div>
+<div id='modal' class='modal'>
+  <div class='modal-content'>
+    <span class='close' onclick='closeModal()'>&times;</span>
+    <h2>Diff Details</h2>
+    <div id='diff-viewer'></div>
+  </div>
+</div>
+<script>
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function unescapeJson(s) {
+  if (!s) return null;
+  if (s.startsWith('"') && s.endsWith('"')) {
+    try {
+      return JSON.parse(s);
+    } catch (e) {
+      return null;
+    }
+  }
+  try {
+    return JSON.parse(s);
+  } catch (e) {
+    return null;
+  }
+}
+
+function computeDiff(oldContent, newContent) {
+  if (!oldContent) oldContent = '';
+  if (!newContent) newContent = '';
+  
+  let oldLines = oldContent.split('\n');
+  let newLines = newContent.split('\n');
+  
+  let result = { left: [], right: [] };
+  
+  // Simple line-by-line diff
+  let maxLen = Math.max(oldLines.length, newLines.length);
+  let oldIdx = 0, newIdx = 0;
+  
+  for (let i = 0; i < maxLen; i++) {
+    let oldLine = oldLines[i];
+    let newLine = newLines[i];
+    
+    if (oldLine === newLine) {
+      result.left.push({ num: i + 1, content: oldLine, type: 'same' });
+      result.right.push({ num: i + 1, content: newLine, type: 'same' });
+    } else {
+      if (oldLine !== undefined) {
+        result.left.push({ num: i + 1, content: oldLine, type: 'del' });
+      }
+      if (newLine !== undefined) {
+        result.right.push({ num: i + 1, content: newLine, type: 'add' });
+      }
+    }
+  }
+  
+  return result;
+}
+
+function showDiff(id, fileName) {
+  fetch('/api/records/' + id).then(r => r.json()).then(data => {
+    let container = document.getElementById('diff-viewer');
+    container.innerHTML = '';
+    
+    let oldSnapshot = unescapeJson(data.old_snapshot);
+    let newSnapshot = unescapeJson(data.new_snapshot);
+    
+    if (!oldSnapshot && !newSnapshot) {
+      container.innerHTML = '<p>No snapshot data available</p>';
+      document.getElementById('modal').style.display = 'block';
+      return;
+    }
+    
+    console.log('oldSnapshot keys:', oldSnapshot ? Object.keys(oldSnapshot) : 'null');
+    console.log('newSnapshot keys:', newSnapshot ? Object.keys(newSnapshot) : 'null');
+    console.log('looking for:', fileName);
+    
+    // Get the content for this file
+    let oldContent = oldSnapshot ? oldSnapshot[fileName] : null;
+    let newContent = newSnapshot ? newSnapshot[fileName] : null;
+    
+    console.log('oldContent:', oldContent ? oldContent.substring(0, 50) : 'null');
+    console.log('newContent:', newContent ? newContent.substring(0, 50) : 'null');
+    
+    if (!oldContent && !newContent) {
+      container.innerHTML = '<p>No content found for file: ' + escapeHtml(fileName) + '</p>';
+      document.getElementById('modal').style.display = 'block';
+      return;
+    }
+    
+    // Compute diff
+    let diff = computeDiff(oldContent, newContent);
+    
+    // Build view
+    let header = document.createElement('div');
+    header.className = 'diff-file-header';
+    header.textContent = fileName;
+    container.appendChild(header);
+    
+    let viewer = document.createElement('div');
+    viewer.className = 'diff-viewer';
+    
+    // Left pane (old)
+    let leftPane = document.createElement('div');
+    leftPane.className = 'diff-pane diff-pane-left';
+    let leftHeader = document.createElement('div');
+    leftHeader.className = 'pane-header';
+    leftHeader.textContent = 'OLD';
+    leftPane.appendChild(leftHeader);
+    
+    for (let line of diff.left) {
+      let div = document.createElement('div');
+      div.className = 'diff-line ' + (line.type === 'del' ? 'diff-del' : '');
+      div.innerHTML = '<span class="diff-line-num">' + line.num + '</span><span class="diff-line-code">' + escapeHtml(line.content) + '</span>';
+      leftPane.appendChild(div);
+    }
+    
+    // Right pane (new)
+    let rightPane = document.createElement('div');
+    rightPane.className = 'diff-pane';
+    let rightHeader = document.createElement('div');
+    rightHeader.className = 'pane-header';
+    rightHeader.textContent = 'NEW';
+    rightPane.appendChild(rightHeader);
+    
+    for (let line of diff.right) {
+      let div = document.createElement('div');
+      div.className = 'diff-line ' + (line.type === 'add' ? 'diff-add' : '');
+      div.innerHTML = '<span class="diff-line-num">' + line.num + '</span><span class="diff-line-code">' + escapeHtml(line.content) + '</span>';
+      rightPane.appendChild(div);
+    }
+    
+    viewer.appendChild(leftPane);
+    viewer.appendChild(rightPane);
+    container.appendChild(viewer);
+    
+    // Sync scroll
+    leftPane.onscroll = function() { rightPane.scrollTop = leftPane.scrollTop; };
+    rightPane.onscroll = function() { leftPane.scrollTop = rightPane.scrollTop; };
+    
+    document.getElementById('modal').style.display = 'block';
+  });
+}
+
+function renderRecords(data) {
+  let html = '<table><tr><th>ID</th><th>Local Ref</th><th>Local SHA</th><th>Remote Ref</th><th>Remote SHA</th><th>Push Time</th><th>Changed Files</th></tr>';
+  if (data.length === 0) {
+    html += '<tr><td colspan="7">No records found</td></tr>';
+  } else {
+    for (let row of data) {
+      html += '<tr>';
+      html += '<td>' + row.id + '</td>';
+      html += '<td>' + (row.local_ref || '') + '</td>';
+      html += '<td>' + (row.local_sha ? row.local_sha.substring(0, 7) : '') + '</td>';
+      html += '<td>' + (row.remote_ref || '') + '</td>';
+      html += '<td>' + (row.remote_sha ? row.remote_sha.substring(0, 7) : '') + '</td>';
+      html += '<td>' + (row.push_time || '') + '</td>';
+      
+      // Changed files
+      let filesHtml = '<td class="files-cell">';
+      if (row.changed_files) {
+        let files = row.changed_files.split(',');
+        for (let f of files) {
+          f = f.trim();
+          if (f) {
+            filesHtml += '<span class="file-tag"><button class="btn-small" onclick="showDiff(' + row.id + ', \'' + escapeHtml(f) + '\')">' + escapeHtml(f) + '</button></span>';
+          }
+        }
+      }
+      filesHtml += '</td>';
+      html += filesHtml;
+      
+      html += '</tr>';
+    }
+  }
+  html += '</table>';
+  document.getElementById('records').innerHTML = html;
+}
+
+fetch('/api/records').then(r => r.json()).then(renderRecords);
+</script>
+</body>
+</html>
